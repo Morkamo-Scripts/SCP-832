@@ -1,63 +1,42 @@
-﻿using System;
+using System;
 using Exiled.API.Features;
 using Exiled.CustomItems.API;
-using Exiled.Events.EventArgs.Player;
-using SCP_832.Components.Events;
-using SCP_832.Components.Features;
-using events = Exiled.Events.Handlers;
+using SCP_832.Configuration;
+using SCP_832.Items;
 
-namespace SCP_832
+namespace SCP_832;
+
+public sealed class Plugin : Plugin<Config>
 {
-    public class Plugin : Plugin<Config>
+    public override string Name => "SCP-832";
+    public override string Prefix => Name;
+    public override string Author => "Morkamo";
+    public override Version RequiredExiledVersion => new(9, 12, 2);
+    public override Version Version => new(1, 2, 0);
+
+    internal static Plugin Instance { get; private set; }
+    internal Messages Messages { get; private set; }
+    private Variant832A _registeredItem;
+
+    public override void OnEnabled()
     {
-        public override string Name => "SCP-832";
-        public override string Prefix => Name;
-        public override string Author => "Morkamo";
-        public override Version RequiredExiledVersion => new(9, 1, 0);
-        public override Version Version => new(1, 0, 0);
-
-        public static Plugin Instance;
-        public GlobalCoin GlobalCoin;
-
-        public override void OnEnabled()
-        {
-            Instance = this;
-            events.Player.Verified += OnVerifiedPlayer;
-            
-            if (Config.ServerIdenifier == "Modded")
-            {
-                GlobalCoin = new GlobalCoin();
-                MorkamoEventsRegistrator.Plugin.AddRegistrator(GlobalCoin);
-            }
-            else
-                Config.Scp832.Register();
-            
-            base.OnEnabled();
-        }
-
-        public override void OnDisabled() 
-        {
-            if (Config.ServerIdenifier == "Modded")
-            {
-                MorkamoEventsRegistrator.Plugin.RemoveRegistrator(GlobalCoin);
-                GlobalCoin = null;
-            }
-            else
-                Config.Scp832.Unregister();
-            
-            events.Player.Verified -= OnVerifiedPlayer;
-            Instance = null;
-            base.OnDisabled();
-        }
-        
-        private void OnVerifiedPlayer(VerifiedEventArgs ev)
-        {
-            if (ev.Player.ReferenceHub.gameObject.GetComponent<Scp832Properties>() != null)
-                return;
-
-            ev.Player.ReferenceHub.gameObject.AddComponent<Scp832Properties>();
-            
-            EventManager.PlayerEvents.InvokePlayerFullConnected(ev.Player);
-        }
+        Instance = this;
+        Messages = MessageFile.Load();
+        _registeredItem = Config.Scp832 ?? new Variant832A();
+        _registeredItem.Register();
+        Exiled.Events.Handlers.Server.ReloadedConfigs += ReloadMessages;
+        base.OnEnabled();
     }
+
+    public override void OnDisabled()
+    {
+        Exiled.Events.Handlers.Server.ReloadedConfigs -= ReloadMessages;
+        _registeredItem?.Unregister();
+        _registeredItem = null;
+        Messages = null;
+        Instance = null;
+        base.OnDisabled();
+    }
+
+    private void ReloadMessages() => Messages = MessageFile.Load();
 }

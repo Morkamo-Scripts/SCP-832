@@ -5,5 +5,5 @@ public enum NeutralEvents
     None,
     SwapWithRandomPlayer,
     TeleportInRandomRoom,
-    
+
 }
